@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { PlusCircle, Trash2, Edit2, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -167,7 +167,6 @@ const App = () => {
 
                   <textarea
                     placeholder="Write your note..."
-                    rows="4"
                     className="w-full p-2 bg-transparent border-b border-gray-400 focus:outline-none focus:border-gray-600 resize-none"
                     value={newPost.content}
                     onChange={(e) => setNewPost({...newPost, content: e.target.value})}
