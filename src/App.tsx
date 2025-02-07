@@ -194,14 +194,14 @@ const PostItCMS = () => {
         {/* Header and Controls */}
         <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 mb-8 shadow-sm">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h1 className="text-3xl font-mono text-gray-800">Sticky Notes</h1>
+            <h1 className="text-3xl font-mono text-gray-800">WhiteBoards</h1>
             
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
               <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Search notes..."
+                  placeholder="ค้นหา..."
                   className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-yellow-400"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -213,7 +213,7 @@ const PostItCMS = () => {
                 className="bg-yellow-400 hover:bg-yellow-500 text-gray-800"
               >
                 <PlusCircle className="w-4 h-4 mr-2" />
-                Add Note
+                สร้างโน้ตใหม่
               </Button>
             </div>
           </div>
@@ -244,13 +244,13 @@ const PostItCMS = () => {
                 <div className="space-y-4">
                   <input
                     type="text"
-                    placeholder="Title"
+                    placeholder="ชื่อเรื่อง"
                     className="w-full p-2 bg-transparent border-b border-gray-400 focus:outline-none focus:border-gray-600"
                     value={newPost.title}
                     onChange={(e) => setNewPost({...newPost, title: e.target.value})}
                   />
                   <textarea
-                    placeholder="Write your note..."
+                    placeholder="เขียนลงตรงนี้เลย👀..."
                     rows={4}
                     className="w-full p-2 bg-transparent border-b border-gray-400 focus:outline-none focus:border-gray-600 resize-none"
                     value={newPost.content}
@@ -271,7 +271,7 @@ const PostItCMS = () => {
                       onClick={editingPost ? updatePost : addPost}
                       className="bg-yellow-400 hover:bg-yellow-500 text-gray-800"
                     >
-                      {editingPost ? 'Update' : 'Stick it!'}
+                      {editingPost ? 'อัปเดตเลย' : 'อัปโหลด!'}
                     </Button>
                   </div>
                 </div>
@@ -330,7 +330,7 @@ const PostItCMS = () => {
 
         {posts.length === 0 && (
           <div className="text-center text-gray-500 mt-8 text-xl">
-            {searchTerm ? 'No matching notes found.' : 'Add your first note!'}
+            {searchTerm ? 'No matching notes found.' : 'เพิ่มโน้ตเลย😆'}
           </div>
         )}
       </div>
