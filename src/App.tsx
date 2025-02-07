@@ -265,7 +265,7 @@ const PostItCMS = () => {
                         setNewPost({ title: '', content: '' });
                       }}
                     >
-                      Cancel
+                      ยกเลิก
                     </Button>
                     <Button 
                       onClick={editingPost ? updatePost : addPost}
