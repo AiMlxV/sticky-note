@@ -4,13 +4,13 @@ import { Button } from '@/components/ui/button';
 import { createClient } from '@supabase/supabase-js';
 
 interface Post {
-  id: number;
-  title: string;
+  id: string;
   content: string;
+  created_at: string;
+  title: string;
   color: string;
   rotation: number;
-  created_at: string;
-  updated_at?: string;
+  updated_at?: string;  // Optional since it may not exist for new posts
 }
 
 // Initialize Supabase client
@@ -66,8 +66,11 @@ const PostItCMS = () => {
 
       setPosts(data || []);
     } catch (error) {
-      console.error('Error fetching posts:', error);
-      setErrorMsg(error.message);
+      if (error instanceof Error) {
+        setErrorMsg(error.message);
+      } else {
+        setErrorMsg('An unknown error occurred');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -97,12 +100,16 @@ const PostItCMS = () => {
         setShowAddPost(false);
       } catch (error) {
         console.error('Error adding post:', error);
-        setErrorMsg(error.message);
+        if (error instanceof Error) {
+          setErrorMsg(error.message);
+        } else {
+          setErrorMsg('An unknown error occurred');
+        }
       }
     }
   };
 
-  const deletePost = async (id) => {
+  const deletePost = async (id: string) => {
     try {
       const { error } = await supabase
         .from('posts')
@@ -114,13 +121,13 @@ const PostItCMS = () => {
       setPosts(prevPosts =>
         prevPosts.filter(post => post.id !== id)
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting post:', error);
       setErrorMsg(error.message);
     }
   };
 
-  const startEditing = (post) => {
+  const startEditing = (post: Post) => {
     setEditingPost(post);
     setNewPost({
       title: post.title,
@@ -131,6 +138,8 @@ const PostItCMS = () => {
 
   const updatePost = async () => {
     try {
+      if (!editingPost) return;
+
       const updatedPost = {
         title: newPost.title,
         content: newPost.content,
@@ -147,13 +156,13 @@ const PostItCMS = () => {
       if (error) throw error;
 
       setPosts(prevPosts =>
-        prevPosts.map(post => (post.id === editingPost.id ? data : post))
+        prevPosts.map(post => (post.id === editingPost?.id ? data : post))
       );
 
       setEditingPost(null);
       setNewPost({ title: '', content: '' });
       setShowAddPost(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating post:', error);
       setErrorMsg(error.message);
     }
@@ -168,7 +177,7 @@ const PostItCMS = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white p-4 md:p-6" 
+    <div className="min-h-screen bg-white p-4 md:p-6"
          style={{
            backgroundImage: `
              linear-gradient(#e5e5e5 1px, transparent 1px),
@@ -240,15 +249,13 @@ const PostItCMS = () => {
                     value={newPost.title}
                     onChange={(e) => setNewPost({...newPost, title: e.target.value})}
                   />
-
                   <textarea
                     placeholder="Write your note..."
-                    rows="4"
+                    rows={4}
                     className="w-full p-2 bg-transparent border-b border-gray-400 focus:outline-none focus:border-gray-600 resize-none"
                     value={newPost.content}
                     onChange={(e) => setNewPost({...newPost, content: e.target.value})}
                   />
-
                   <div className="flex justify-end gap-2">
                     <Button
                       variant="ghost"
@@ -284,7 +291,7 @@ const PostItCMS = () => {
               className={`${post.color} aspect-square p-4 rounded-sm min-h-[200px]
                 flex flex-col relative group hover:z-10 hover:scale-105
                 transition-all duration-300`}
-              style={{
+              style={{ 
                 transform: `rotate(${post.rotation}deg)`,
               }}
             >
@@ -306,11 +313,9 @@ const PostItCMS = () => {
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
-
               <h3 className="font-mono text-lg mb-2 pr-16 text-gray-800 line-clamp-1">
                 {post.title}
               </h3>
-              
               <div className="font-mono text-sm text-gray-700 flex-grow overflow-hidden line-clamp-6">
                 {post.content}
               </div>
