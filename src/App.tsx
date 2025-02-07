@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PlusCircle, Trash2, Edit2, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { createClient } from '@supabase/supabase-js';
 
 interface Post {
   id: number;
@@ -8,24 +9,27 @@ interface Post {
   content: string;
   color: string;
   rotation: number;
-  date: string;
-  lastEdited?: string;
+  created_at: string;
+  updated_at?: string;
 }
 
-interface PostForm {
-  title: string;
-  content: string;
+// Initialize Supabase client
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase environment variables');
 }
 
-const App = () => {
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+const PostItCMS = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [showAddPost, setShowAddPost] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [newPost, setNewPost] = useState<PostForm>({
-    title: '',
-    content: '',
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const colors = [
     'bg-yellow-200 shadow-md',
@@ -41,27 +45,82 @@ const App = () => {
     return rotations[Math.floor(Math.random() * rotations.length)];
   };
 
-  const addPost = () => {
-    if (newPost.title.trim() || newPost.content.trim()) {
-      const post = {
-        id: Date.now(),
-        ...newPost,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        rotation: getRandomRotation(),
-        date: new Date().toLocaleDateString(),
-      };
+  const [newPost, setNewPost] = useState({
+    title: '',
+    content: '',
+  });
 
-      setPosts([post, ...posts]);
-      setNewPost({ title: '', content: '' });
-      setShowAddPost(false);
+  // Fetch posts from Supabase
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setPosts(data || []);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      setErrorMsg(error.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const deletePost = (id: number) => {
-    setPosts(posts.filter(post => post.id !== id));
+  const addPost = async () => {
+    if (newPost.title.trim() || newPost.content.trim()) {
+      try {
+        const post = {
+          title: newPost.title,
+          content: newPost.content,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: getRandomRotation(),
+          created_at: new Date().toISOString(),
+        };
+
+        const { data, error } = await supabase
+          .from('posts')
+          .insert([post])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setPosts([data, ...posts]);
+        setNewPost({ title: '', content: '' });
+        setShowAddPost(false);
+      } catch (error) {
+        console.error('Error adding post:', error);
+        setErrorMsg(error.message);
+      }
+    }
   };
 
-  const startEditing = (post: Post) => {
+  const deletePost = async (id) => {
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setPosts(prevPosts =>
+        prevPosts.filter(post => post.id !== id)
+      );
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      setErrorMsg(error.message);
+    }
+  };
+
+  const startEditing = (post) => {
     setEditingPost(post);
     setNewPost({
       title: post.title,
@@ -70,31 +129,43 @@ const App = () => {
     setShowAddPost(true);
   };
 
-  const updatePost = () => {
-    if (!editingPost) return;
-    if (!newPost.title.trim() && !newPost.content.trim()) {
-      alert('Please fill in at least one field');
-      return;
-    }
+  const updatePost = async () => {
+    try {
+      const updatedPost = {
+        title: newPost.title,
+        content: newPost.content,
+        updated_at: new Date().toISOString(),
+      };
 
-    setPosts(posts.map(post => 
-      post.id === editingPost.id 
-        ? {
-            ...post,
-            ...newPost,
-            lastEdited: new Date().toLocaleDateString()
-          }
-        : post
-    ));
-    setEditingPost(null);
-    setNewPost({ title: '', content: '' });
-    setShowAddPost(false);
+      const { data, error } = await supabase
+        .from('posts')
+        .update(updatedPost)
+        .eq('id', editingPost.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setPosts(prevPosts =>
+        prevPosts.map(post => (post.id === editingPost.id ? data : post))
+      );
+
+      setEditingPost(null);
+      setNewPost({ title: '', content: '' });
+      setShowAddPost(false);
+    } catch (error) {
+      console.error('Error updating post:', error);
+      setErrorMsg(error.message);
+    }
   };
 
-  const filteredPosts = posts.filter(post => 
-    post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    post.content.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-gray-600">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white p-4 md:p-6" 
@@ -106,10 +177,15 @@ const App = () => {
            backgroundSize: '20px 20px'
          }}>
       <div className="max-w-7xl mx-auto">
+        {errorMsg && (
+          <div className="bg-red-100 border border-red-400 text-red-700 p-4 mb-4 rounded">
+            Error: {errorMsg}
+          </div>
+        )}
         {/* Header and Controls */}
         <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 mb-8 shadow-sm">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h1 className="text-3xl font-mono text-gray-800">Whiteboard</h1>
+            <h1 className="text-3xl font-mono text-gray-800">Sticky Notes</h1>
             
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
               <div className="relative flex-grow">
@@ -199,16 +275,17 @@ const App = () => {
 
         {/* Posts Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {filteredPosts.map(post => (
+          {posts.filter(post => 
+            post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            post.content.toLowerCase().includes(searchTerm.toLowerCase())
+          ).map(post => (
             <div
               key={post.id}
-              className={`${post.color} aspect-square p-4 rounded-sm min-h-[200px] flex flex-col 
-                relative group hover:z-10 hover:scale-105 transition-all duration-300
-                before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2
-                before:w-6 before:h-3 before:bg-yellow-400/50 before:-translate-y-2`}
+              className={`${post.color} aspect-square p-4 rounded-sm min-h-[200px]
+                flex flex-col relative group hover:z-10 hover:scale-105
+                transition-all duration-300`}
               style={{
                 transform: `rotate(${post.rotation}deg)`,
-                boxShadow: '2px 3px 7px rgba(0,0,0,0.2)',
               }}
             >
               <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -230,18 +307,23 @@ const App = () => {
                 </Button>
               </div>
 
-              <h3 className="font-mono text-lg mb-2 pr-16 text-gray-800 line-clamp-1">{post.title}</h3>
-              <p className="font-mono text-sm text-gray-700 flex-grow overflow-hidden line-clamp-6">{post.content}</p>
+              <h3 className="font-mono text-lg mb-2 pr-16 text-gray-800 line-clamp-1">
+                {post.title}
+              </h3>
+              
+              <div className="font-mono text-sm text-gray-700 flex-grow overflow-hidden line-clamp-6">
+                {post.content}
+              </div>
               
               <div className="mt-2 text-xs text-gray-600">
-                {post.date}
-                {post.lastEdited && ` (edited: ${post.lastEdited})`}
+                {new Date(post.created_at).toLocaleDateString()}
+                {post.updated_at ? ` (edited: ${new Date(post.updated_at).toLocaleDateString()})` : ''}
               </div>
             </div>
           ))}
         </div>
 
-        {filteredPosts.length === 0 && (
+        {posts.length === 0 && (
           <div className="text-center text-gray-500 mt-8 text-xl">
             {searchTerm ? 'No matching notes found.' : 'Add your first note!'}
           </div>
@@ -251,4 +333,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default PostItCMS;
