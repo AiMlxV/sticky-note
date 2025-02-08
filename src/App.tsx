@@ -202,12 +202,29 @@ const PostItCMS = () => {
     return a.pinned ? -1 : 1;
   });
 
-  // Add helper function to determine post size
-  const getPostSize = (content: string) => {
+  // Updated post size calculation with better spacing
+  const getPostSize = (title: string, content: string) => {
     const contentLength = content.length;
-    if (contentLength > 200) return 'col-span-2 row-span-2';
-    if (contentLength > 100) return 'col-span-2';
-    return 'col-span-1';
+    const titleLength = title.length;
+    const totalLength = contentLength + titleLength;
+    
+    // Extra large post: Very long content or very long title + content
+    if (totalLength > 400 || contentLength > 300) {
+      return 'col-span-2 row-span-2 min-h-[300px]';
+    }
+    
+    // Wide post: Long title but moderate content
+    if (titleLength > 40 || (titleLength > 25 && contentLength > 50)) {
+      return 'col-span-2 row-span-1 min-h-[200px]';
+    }
+    
+    // Tall post: Short title but long content
+    if (contentLength > 200) {
+      return 'col-span-1 row-span-2 min-h-[300px]';
+    }
+    
+    // Regular post: Short content and title
+    return 'col-span-1 row-span-1 min-h-[200px]';
   };
 
   if (isLoading) {
@@ -312,23 +329,25 @@ const PostItCMS = () => {
           </div>
         )}
 
-        {/* Modified Posts Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 auto-rows-fr gap-3 md:gap-4">
+        {/* Modified Posts Grid with better spacing */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 
+                    auto-rows-[minmax(200px,auto)] gap-6 ">
           {sortedPosts.filter(post => 
             post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             post.content.toLowerCase().includes(searchTerm.toLowerCase())
           ).map(post => (
             <div
               key={post.id}
-              className={`${post.color} p-3 md:p-4 rounded-sm
+              className={`${post.color} p-4 md:p-5 rounded-lg
                 flex flex-col relative group hover:z-10 hover:scale-105
                 transition-all duration-300 ${post.pinned ? 'ring-2 ring-yellow-500' : ''}
-                ${getPostSize(post.content)}`}
+                ${getPostSize(post.title, post.content)}`}
               style={{ 
                 transform: `rotate(${post.rotation}deg)`,
               }}
             >
-              <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+              {/* Controls wrapper */}
+              <div className="absolute top-3 right-3 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -354,10 +373,13 @@ const PostItCMS = () => {
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
-              <h3 className="font-mono text-base md:text-lg mb-2 pr-20 text-gray-800 line-clamp-1">
+              {/* Title with better spacing */}
+              <h3 className="font-mono text-base md:text-lg mb-3 pr-16 text-gray-800 line-clamp-2">
                 {post.title}
               </h3>
-              <div className="font-mono text-sm text-gray-700 flex-grow overflow-hidden line-clamp-6">
+              {/* Content with adjusted line clamp */}
+              <div className={`font-mono text-sm text-gray-700 flex-grow overflow-hidden
+                ${getPostSize(post.title, post.content).includes('row-span-2') ? 'line-clamp-12' : 'line-clamp-8'}`}>
                 {post.content}
               </div>
               
