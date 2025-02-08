@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Search, X, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -262,6 +263,16 @@ const PostItCMS = () => {
     return 'col-span-1 row-span-1 min-h-[200px]';
   };
 
+  // Add helper function to preserve line breaks
+  const formatContent = (content: string) => {
+    return content.split('\n').map((line, i) => (
+      <React.Fragment key={i}>
+        {line}
+        <br />
+      </React.Fragment>
+    ));
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -344,8 +355,10 @@ const PostItCMS = () => {
                   />
                   <textarea
                     placeholder="เขียนลงตรงนี้เลย👀..."
-                    rows={4}
-                    className="w-full p-2 bg-transparent border-b border-gray-400 focus:outline-none focus:border-gray-600 resize-none"
+                    rows={6}
+                    className="w-full p-2 bg-transparent border-b border-gray-400 
+                               focus:outline-none focus:border-gray-600 resize-none
+                               whitespace-pre-wrap"
                     value={newPost.content}
                     onChange={(e) => setNewPost({...newPost, content: e.target.value})}
                   />
@@ -437,8 +450,9 @@ const PostItCMS = () => {
 
               {/* Content */}
               <div className={`font-mono text-sm text-gray-700 flex-grow overflow-hidden
+                whitespace-pre-line
                 ${getPostSize(post.title, post.content).includes('row-span-2') ? 'line-clamp-12' : 'line-clamp-8'}`}>
-                {post.content}
+                {formatContent(post.content)}
               </div>
               
               {/* Footer with date and controls */}
