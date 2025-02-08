@@ -35,6 +35,10 @@ const PostItCMS = () => {
     show: false,
     postId: null
   });
+  const [successMessage, setSuccessMessage] = useState<{ show: boolean; message: string }>({
+    show: false,
+    message: ''
+  });
 
   const colors = [
     'bg-yellow-200 shadow-md',
@@ -104,6 +108,12 @@ const PostItCMS = () => {
         setPosts([data, ...posts]);
         setNewPost({ title: '', content: '' });
         setShowAddPost(false);
+        setSuccessMessage({ 
+          show: true, 
+          message: '✨ โน้ตถูกสร้างเรียบร้อยแล้ว! / Note created successfully!' 
+        });
+        // Auto hide success message after 3 seconds
+        setTimeout(() => setSuccessMessage({ show: false, message: '' }), 3000);
       } catch (error) {
         console.error('Error adding post:', error);
         if (error instanceof Error) {
@@ -168,6 +178,11 @@ const PostItCMS = () => {
       setEditingPost(null);
       setNewPost({ title: '', content: '' });
       setShowAddPost(false);
+      setSuccessMessage({ 
+        show: true, 
+        message: '✨ อัปเดตโน้ตเรียบร้อยแล้ว! / Note updated successfully!' 
+      });
+      setTimeout(() => setSuccessMessage({ show: false, message: '' }), 3000);
     } catch (error: any) {
       console.error('Error updating post:', error);
       setErrorMsg(error.message);
@@ -208,6 +223,11 @@ const PostItCMS = () => {
     
     await deletePost(deleteConfirm.postId);
     setDeleteConfirm({ show: false, postId: null });
+    setSuccessMessage({ 
+      show: true, 
+      message: '🗑️ ลบโน้ตเรียบร้อยแล้ว! / Note deleted successfully!' 
+    });
+    setTimeout(() => setSuccessMessage({ show: false, message: '' }), 3000);
   };
 
   const sortedPosts = [...posts].sort((a, b) => {
@@ -263,6 +283,15 @@ const PostItCMS = () => {
         {errorMsg && (
           <div className="bg-red-100 border border-red-400 text-red-700 p-4 mb-4 rounded">
             Error: {errorMsg}
+          </div>
+        )}
+        {/* Success Message Toast */}
+        {successMessage.show && (
+          <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 
+                         bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg
+                         animate-fade-in-up z-50 flex items-center gap-2
+                         text-sm md:text-base">
+            {successMessage.message}
           </div>
         )}
         {/* Header and Controls */}
