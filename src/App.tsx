@@ -31,6 +31,10 @@ const PostItCMS = () => {
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; postId: string | null }>({
+    show: false,
+    postId: null
+  });
 
   const colors = [
     'bg-yellow-200 shadow-md',
@@ -195,6 +199,17 @@ const PostItCMS = () => {
     }
   };
 
+  const handleDeleteClick = (postId: string) => {
+    setDeleteConfirm({ show: true, postId });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm.postId) return;
+    
+    await deletePost(deleteConfirm.postId);
+    setDeleteConfirm({ show: false, postId: null });
+  };
+
   const sortedPosts = [...posts].sort((a, b) => {
     if (a.pinned === b.pinned) {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -329,9 +344,42 @@ const PostItCMS = () => {
           </div>
         )}
 
-        {/* Modified Posts Grid with better spacing */}
+        {/* Delete Confirmation Modal */}
+        {deleteConfirm.show && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-lg w-full max-w-sm transform transition-all">
+              <div className="p-6">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">
+                  แน่ใจใช่มั้ย / Are U Sure? 🤔 
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  แน่ใจหรือไม่ว่าต้องการลบโน้ตนี้? <br></br>ย้อนกลับไม่ได้นะ 🤯
+                </p>
+                <p className="text-gray-600 mb-6">
+                  Are u sure to delete this note? <br></br>It can't be undone. 🤯
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setDeleteConfirm({ show: false, postId: null })}
+                  >
+                    ยกเลิก ❌
+                  </Button>
+                  <Button 
+                    className="bg-red-500 hover:bg-red-600 text-white"
+                    onClick={handleConfirmDelete}
+                  >
+                    ลบ 🗑️
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modified Posts Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 
-                    auto-rows-[minmax(200px,auto)] gap-6 ">
+                    auto-rows-[minmax(200px,auto)] gap-6">
           {sortedPosts.filter(post => 
             post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             post.content.toLowerCase().includes(searchTerm.toLowerCase())
@@ -346,46 +394,65 @@ const PostItCMS = () => {
                 transform: `rotate(${post.rotation}deg)`,
               }}
             >
-              {/* Controls wrapper */}
-              <div className="absolute top-3 right-3 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`h-8 w-8 p-0 hover:bg-black/10 ${post.pinned ? 'text-yellow-600' : ''}`}
-                  onClick={() => togglePin(post)}
-                >
-                  <Pin className={`w-4 h-4 ${post.pinned ? 'fill-current' : ''}`} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 hover:bg-black/10"
-                  onClick={() => startEditing(post)}
-                >
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 hover:bg-black/10"
-                  onClick={() => deletePost(post.id)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-              {/* Title with better spacing */}
-              <h3 className="font-mono text-base md:text-lg mb-3 pr-16 text-gray-800 line-clamp-2">
+              {/* Pin indicator if pinned */}
+              {post.pinned && (
+                <div className="absolute top-3 right-3">
+                  <Pin className="w-4 h-4 text-yellow-600 fill-current" />
+                </div>
+              )}
+
+              {/* Title */}
+              <h3 className="font-mono text-base md:text-lg mb-3 text-gray-800 line-clamp-2">
                 {post.title}
               </h3>
-              {/* Content with adjusted line clamp */}
+
+              {/* Content */}
               <div className={`font-mono text-sm text-gray-700 flex-grow overflow-hidden
                 ${getPostSize(post.title, post.content).includes('row-span-2') ? 'line-clamp-12' : 'line-clamp-8'}`}>
                 {post.content}
               </div>
               
-              <div className="mt-2 text-xs text-gray-600">
-                {new Date(post.created_at).toLocaleDateString()}
-                {post.updated_at ? ` (edited: ${new Date(post.updated_at).toLocaleDateString()})` : ''}
+              {/* Footer with date and controls */}
+              <div className="mt-4 pt-2 border-t border-gray-200/50 flex flex-col gap-2">
+                {/* Date info */}
+                <div className="text-xs text-gray-600">
+                  {new Date(post.created_at).toLocaleDateString()}
+                  {post.updated_at ? ` (edited: ${new Date(post.updated_at).toLocaleDateString()})` : ''}
+                </div>
+
+                {/* Icon-only Controls */}
+                <div className="flex justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`h-8 w-8 p-0 hover:bg-black/5 
+                      ${post.pinned ? 'text-yellow-600' : 'text-gray-600'}`}
+                    onClick={() => togglePin(post)}
+                    title={post.pinned ? 'Unpin' : 'Pin'}
+                  >
+                    <Pin className={`w-4 h-4 ${post.pinned ? 'fill-current' : ''}`} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-black/5 text-gray-600"
+                    onClick={() => startEditing(post)}
+                    title="Edit"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-black/5 
+                      text-red-600/70 hover:text-red-600
+                      md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleDeleteClick(post.id)}
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
