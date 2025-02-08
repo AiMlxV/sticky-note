@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PlusCircle, Trash2, Edit2, Search, X, Pin } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, X, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@supabase/supabase-js';
 
@@ -202,6 +202,14 @@ const PostItCMS = () => {
     return a.pinned ? -1 : 1;
   });
 
+  // Add helper function to determine post size
+  const getPostSize = (content: string) => {
+    const contentLength = content.length;
+    if (contentLength > 200) return 'col-span-2 row-span-2';
+    if (contentLength > 100) return 'col-span-2';
+    return 'col-span-1';
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -211,7 +219,7 @@ const PostItCMS = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white p-2 md:p-6"
+    <div className="min-h-screen bg-white p-2 md:p-6 pb-20" // Added pb-20 for FAB space
          style={{
            backgroundImage: `
              linear-gradient(#e5e5e5 1px, transparent 1px),
@@ -230,25 +238,15 @@ const PostItCMS = () => {
           <div className="flex flex-col gap-3">
             <h1 className="text-2xl md:text-3xl font-mono text-gray-800">WhiteBoards</h1>
             
-            <div className="flex flex-col gap-2 w-full">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="ค้นหา..."
-                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-yellow-400 text-sm md:text-base"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              
-              <Button
-                onClick={() => setShowAddPost(true)}
-                className="bg-yellow-400 hover:bg-yellow-500 text-gray-800 w-full md:w-auto"
-              >
-                <PlusCircle className="w-4 h-4 mr-2" />
-                สร้างโน้ตใหม่
-              </Button>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="ค้นหา..."
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-yellow-400 text-sm md:text-base"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
         </div>
@@ -314,17 +312,18 @@ const PostItCMS = () => {
           </div>
         )}
 
-        {/* Posts Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+        {/* Modified Posts Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 auto-rows-fr gap-3 md:gap-4">
           {sortedPosts.filter(post => 
             post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             post.content.toLowerCase().includes(searchTerm.toLowerCase())
           ).map(post => (
             <div
               key={post.id}
-              className={`${post.color} p-3 md:p-4 rounded-sm min-h-[200px]
+              className={`${post.color} p-3 md:p-4 rounded-sm
                 flex flex-col relative group hover:z-10 hover:scale-105
-                transition-all duration-300 ${post.pinned ? 'ring-2 ring-yellow-500' : ''}`}
+                transition-all duration-300 ${post.pinned ? 'ring-2 ring-yellow-500' : ''}
+                ${getPostSize(post.content)}`}
               style={{ 
                 transform: `rotate(${post.rotation}deg)`,
               }}
@@ -369,6 +368,20 @@ const PostItCMS = () => {
             </div>
           ))}
         </div>
+
+        {/* Modified Floating Action Button */}
+        <button
+          onClick={() => setShowAddPost(true)}
+          className="fixed bottom-6 right-6 
+                     bg-white/80 backdrop-blur-sm hover:bg-yellow-50
+                     text-gray-800 border-2 border-yellow-400
+                     w-12 h-12 rounded-xl shadow-lg 
+                     flex items-center justify-center
+                     transition-all duration-300 hover:scale-105 
+                     hover:rotate-90 z-50"
+        >
+          <Plus className="w-6 h-6 text-yellow-600" />
+        </button>
 
         {posts.length === 0 && (
           <div className="text-center text-gray-500 mt-8 text-xl">
