@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PlusCircle, Trash2, Edit2, Search, X } from 'lucide-react';
+import { PlusCircle, Trash2, Edit2, Search, X, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@supabase/supabase-js';
 
@@ -11,6 +11,7 @@ interface Post {
   color: string;
   rotation: number;
   updated_at?: string;  // Optional since it may not exist for new posts
+  pinned: boolean;
 }
 
 // Initialize Supabase client
@@ -85,6 +86,7 @@ const PostItCMS = () => {
           color: colors[Math.floor(Math.random() * colors.length)],
           rotation: getRandomRotation(),
           created_at: new Date().toISOString(),
+          pinned: false,
         };
 
         const { data, error } = await supabase
@@ -168,6 +170,38 @@ const PostItCMS = () => {
     }
   };
 
+  const togglePin = async (post: Post) => {
+    try {
+      const updatedPost = {
+        pinned: !post.pinned,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase
+        .from('posts')
+        .update(updatedPost)
+        .eq('id', post.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setPosts(prevPosts =>
+        prevPosts.map(p => (p.id === post.id ? data : p))
+      );
+    } catch (error: any) {
+      console.error('Error toggling pin:', error);
+      setErrorMsg(error.message);
+    }
+  };
+
+  const sortedPosts = [...posts].sort((a, b) => {
+    if (a.pinned === b.pinned) {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }
+    return a.pinned ? -1 : 1;
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -177,7 +211,7 @@ const PostItCMS = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white p-4 md:p-6"
+    <div className="min-h-screen bg-white p-2 md:p-6"
          style={{
            backgroundImage: `
              linear-gradient(#e5e5e5 1px, transparent 1px),
@@ -192,17 +226,17 @@ const PostItCMS = () => {
           </div>
         )}
         {/* Header and Controls */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 mb-8 shadow-sm">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h1 className="text-3xl font-mono text-gray-800">WhiteBoards</h1>
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 md:p-4 mb-4 md:mb-8 shadow-sm">
+          <div className="flex flex-col gap-3">
+            <h1 className="text-2xl md:text-3xl font-mono text-gray-800">WhiteBoards</h1>
             
-            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-              <div className="relative flex-grow">
+            <div className="flex flex-col gap-2 w-full">
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="ค้นหา..."
-                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-yellow-400"
+                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-yellow-400 text-sm md:text-base"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -210,7 +244,7 @@ const PostItCMS = () => {
               
               <Button
                 onClick={() => setShowAddPost(true)}
-                className="bg-yellow-400 hover:bg-yellow-500 text-gray-800"
+                className="bg-yellow-400 hover:bg-yellow-500 text-gray-800 w-full md:w-auto"
               >
                 <PlusCircle className="w-4 h-4 mr-2" />
                 สร้างโน้ตใหม่
@@ -281,21 +315,29 @@ const PostItCMS = () => {
         )}
 
         {/* Posts Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {posts.filter(post => 
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+          {sortedPosts.filter(post => 
             post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             post.content.toLowerCase().includes(searchTerm.toLowerCase())
           ).map(post => (
             <div
               key={post.id}
-              className={`${post.color} aspect-square p-4 rounded-sm min-h-[200px]
+              className={`${post.color} p-3 md:p-4 rounded-sm min-h-[200px]
                 flex flex-col relative group hover:z-10 hover:scale-105
-                transition-all duration-300`}
+                transition-all duration-300 ${post.pinned ? 'ring-2 ring-yellow-500' : ''}`}
               style={{ 
                 transform: `rotate(${post.rotation}deg)`,
               }}
             >
-              <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-8 w-8 p-0 hover:bg-black/10 ${post.pinned ? 'text-yellow-600' : ''}`}
+                  onClick={() => togglePin(post)}
+                >
+                  <Pin className={`w-4 h-4 ${post.pinned ? 'fill-current' : ''}`} />
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -313,7 +355,7 @@ const PostItCMS = () => {
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
-              <h3 className="font-mono text-lg mb-2 pr-16 text-gray-800 line-clamp-1">
+              <h3 className="font-mono text-base md:text-lg mb-2 pr-20 text-gray-800 line-clamp-1">
                 {post.title}
               </h3>
               <div className="font-mono text-sm text-gray-700 flex-grow overflow-hidden line-clamp-6">

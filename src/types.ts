@@ -12,4 +12,5 @@ export interface Post {
   tags: string[];
   created_at: string;
   updated_at?: string;
+  pinned: boolean;
 }
