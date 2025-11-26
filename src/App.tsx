@@ -2,7 +2,7 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Search, X, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@supabase/supabase-js';
+import { neon } from '@neon/serverless';
 
 interface Post {
   id: string;
@@ -11,19 +11,16 @@ interface Post {
   title: string;
   color: string;
   rotation: number;
-  updated_at?: string;  // Optional since it may not exist for new posts
+  updated_at?: string;
   pinned: boolean;
 }
 
-// Initialize Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const sql = neon(import.meta.env.VITE_DATABASE_URL);
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase environment variables');
+//throw error if connection fails
+if (!sql) {
+  throw new Error('Failed to connect to the database. Please check your DATABASE_URL.');
 }
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const PostItCMS = () => {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -60,21 +57,17 @@ const PostItCMS = () => {
     content: '',
   });
 
-  // Fetch posts from Supabase
   useEffect(() => {
     fetchPosts();
   }, []);
 
   const fetchPosts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      setPosts(data || []);
+      const data = await sql`
+        SELECT * FROM posts 
+        ORDER BY created_at DESC
+      `;
+      setPosts(data as Post[]);
     } catch (error) {
       if (error instanceof Error) {
         setErrorMsg(error.message);
@@ -89,31 +82,23 @@ const PostItCMS = () => {
   const addPost = async () => {
     if (newPost.title.trim() || newPost.content.trim()) {
       try {
-        const post = {
-          title: newPost.title,
-          content: newPost.content,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          rotation: getRandomRotation(),
-          created_at: new Date().toISOString(),
-          pinned: false,
-        };
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const rotation = getRandomRotation();
+        const created_at = new Date().toISOString();
+        
+        const result = await sql`
+          INSERT INTO posts (title, content, color, rotation, created_at, pinned)
+          VALUES (${newPost.title}, ${newPost.content}, ${color}, ${rotation}, ${created_at}, false)
+          RETURNING *
+        `;
 
-        const { data, error } = await supabase
-          .from('posts')
-          .insert([post])
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        setPosts([data, ...posts]);
+        setPosts([result[0] as Post, ...posts]);
         setNewPost({ title: '', content: '' });
         setShowAddPost(false);
         setSuccessMessage({ 
           show: true, 
           message: '✨ โน้ตถูกสร้างเรียบร้อยแล้ว! / Note created successfully!' 
         });
-        // Auto hide success message after 3 seconds
         setTimeout(() => setSuccessMessage({ show: false, message: '' }), 3000);
       } catch (error) {
         console.error('Error adding post:', error);
@@ -128,12 +113,10 @@ const PostItCMS = () => {
 
   const deletePost = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('posts')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await sql`
+        DELETE FROM posts 
+        WHERE id = ${id}
+      `;
 
       setPosts(prevPosts =>
         prevPosts.filter(post => post.id !== id)
@@ -157,23 +140,19 @@ const PostItCMS = () => {
     try {
       if (!editingPost) return;
 
-      const updatedPost = {
-        title: newPost.title,
-        content: newPost.content,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { data, error } = await supabase
-        .from('posts')
-        .update(updatedPost)
-        .eq('id', editingPost.id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const updated_at = new Date().toISOString();
+      
+      const result = await sql`
+        UPDATE posts 
+        SET title = ${newPost.title},
+            content = ${newPost.content},
+            updated_at = ${updated_at}
+        WHERE id = ${editingPost.id}
+        RETURNING *
+      `;
 
       setPosts(prevPosts =>
-        prevPosts.map(post => (post.id === editingPost?.id ? data : post))
+        prevPosts.map(post => (post.id === editingPost?.id ? result[0] as Post : post))
       );
 
       setEditingPost(null);
@@ -192,22 +171,18 @@ const PostItCMS = () => {
 
   const togglePin = async (post: Post) => {
     try {
-      const updatedPost = {
-        pinned: !post.pinned,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { data, error } = await supabase
-        .from('posts')
-        .update(updatedPost)
-        .eq('id', post.id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const updated_at = new Date().toISOString();
+      
+      const result = await sql`
+        UPDATE posts 
+        SET pinned = ${!post.pinned},
+            updated_at = ${updated_at}
+        WHERE id = ${post.id}
+        RETURNING *
+      `;
 
       setPosts(prevPosts =>
-        prevPosts.map(p => (p.id === post.id ? data : p))
+        prevPosts.map(p => (p.id === post.id ? result[0] as Post : p))
       );
     } catch (error: any) {
       console.error('Error toggling pin:', error);
